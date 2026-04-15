@@ -95,8 +95,8 @@ function createWindow() {
       devTools: false, // Disable devTools in production to save memory
       spellcheck: false,
     },
-    // Fix for Linux: type 'toolbar' or 'utility' helps with always-on-top positioning issues
-    ...(process.platform === 'linux' ? { type: 'toolbar', focusable: true } : {}),
+    // Fix for Linux: type 'utility' is better than 'toolbar' for interactive overlays on X11
+    ...(process.platform === 'linux' ? { type: 'utility', focusable: true, movable: true } : {}),
   });
 
   if (process.platform === 'linux') {

@@ -186,15 +186,22 @@ class BroadcastLauncherApp:
                         if mtime > last_mtime:
                             last_mtime = mtime
                             with open(SETTINGS_FILE, "r") as f:
-                                new_settings = json.load(f)
+                                data = f.read()
+                                if not data: continue
+                                new_settings = json.loads(data)
                                 
-                                # Only update if window coordinates changed
-                                if (new_settings.get("win_x") != self.settings.get("win_x") or 
-                                    new_settings.get("win_y") != self.settings.get("win_y")):
-                                    
+                                # Compare values specifically
+                                changed = False
+                                for key in ["win_x", "win_y", "win_w", "win_h", "display_index"]:
+                                    if new_settings.get(key) != self.settings.get(key):
+                                        changed = True
+                                        break
+                                
+                                if changed:
                                     self.settings.update(new_settings)
                                     self.root.after(0, self.sync_ui_to_settings)
-                except: pass
+                except Exception as e:
+                    pass
                 import time
                 time.sleep(0.5)
         
