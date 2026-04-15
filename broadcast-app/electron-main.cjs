@@ -92,6 +92,8 @@ function createWindow() {
       devTools: false, // Disable devTools in production to save memory
       spellcheck: false,
     },
+    // Fix for Linux: type 'toolbar' or 'utility' helps with always-on-top positioning issues
+    ...(process.platform === 'linux' ? { type: 'toolbar' } : {}),
   });
 
   // Load the Production Build or fall back to Dev Server
@@ -106,6 +108,31 @@ function createWindow() {
   // OPTIMIZATION: Lower frame rate even further when not needed
   win.webContents.setFrameRate(30);
 
+  // LINUX FIX: Prevent window from snapping to (0,0) on focus loss (common on GNOME/Ubuntu)
+  if (process.platform === 'linux') {
+    win.on('blur', () => {
+      // Small timeout to ensure the WM has finished its move attempt
+      setTimeout(() => {
+        const currentBounds = win.getBounds();
+        // If it snapped to 0,0 or seems off, reset to last known good settings
+        if (currentBounds.x === 0 && currentBounds.y === 0) {
+          const s = loadSettings();
+          if (s && s.win_x !== undefined) {
+             win.setPosition(s.win_x, s.win_y);
+          }
+        }
+      }, 50);
+    });
+    
+    // Also re-apply on focus just in case
+    win.on('focus', () => {
+      const s = loadSettings();
+      if (s && s.win_x !== undefined) {
+        win.setPosition(s.win_x, s.win_y);
+      }
+    });
+  }
+
   // Savestate
   const saveState = () => {
     const bounds = win.getBounds();
@@ -114,6 +141,13 @@ function createWindow() {
     const displayIndex = displays.findIndex(d => d.id === currentDisplay.id);
     
     const currentSettings = loadSettings() || {};
+    
+    // Linux Snap Protection: don't save 0,0 if it's a sudden snap on Linux
+    if (process.platform === 'linux' && bounds.x === 0 && bounds.y === 0) {
+      console.log("Ignoring snap to 0,0 for settings save.");
+      return;
+    }
+
     currentSettings.win_x = bounds.x;
     currentSettings.win_y = bounds.y;
     currentSettings.win_w = bounds.width;
