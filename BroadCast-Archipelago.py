@@ -173,6 +173,53 @@ class BroadcastLauncherApp:
         tk.Button(btn_frame, text="RESET ALL HISTORY", command=self.trigger_clear_history, bg="#121214", fg="#ff5555", font=("Segoe UI", 8, "bold"), border=0, cursor="hand2").pack(side="left", padx=10)
 
         self.update_preview()
+        self.start_settings_watcher()
+
+    def start_settings_watcher(self):
+        """Monitor the settings file for changes from Electron and update UI."""
+        def watch_loop():
+            last_mtime = 0
+            while True:
+                try:
+                    if os.path.exists(SETTINGS_FILE):
+                        mtime = os.path.getmtime(SETTINGS_FILE)
+                        if mtime > last_mtime:
+                            last_mtime = mtime
+                            with open(SETTINGS_FILE, "r") as f:
+                                new_settings = json.load(f)
+                                
+                                # Only update if window coordinates changed
+                                if (new_settings.get("win_x") != self.settings.get("win_x") or 
+                                    new_settings.get("win_y") != self.settings.get("win_y")):
+                                    
+                                    self.settings.update(new_settings)
+                                    self.root.after(0, self.sync_ui_to_settings)
+                except: pass
+                import time
+                time.sleep(0.5)
+        
+        threading.Thread(target=watch_loop, daemon=True).start()
+
+    def sync_ui_to_settings(self):
+        """Update UI fields and preview based on current self.settings."""
+        try:
+            self.win_x.delete(0, tk.END)
+            self.win_x.insert(0, str(self.settings.get("win_x", -1)))
+            self.win_y.delete(0, tk.END)
+            self.win_y.insert(0, str(self.settings.get("win_y", -1)))
+            self.win_w.delete(0, tk.END)
+            self.win_w.insert(0, str(self.settings.get("win_w", 400)))
+            self.win_h.delete(0, tk.END)
+            self.win_h.insert(0, str(self.settings.get("win_h", 600)))
+            
+            # Sync monitor if index changed
+            new_mon_idx = self.settings.get("display_index", 0)
+            if new_mon_idx != self.current_monitor_idx:
+                self.monitor_select.current(new_mon_idx)
+                self.on_monitor_change()
+            
+            self.update_preview()
+        except: pass
 
     def on_monitor_change(self, event=None):
         self.current_monitor_idx = self.monitor_select.current()

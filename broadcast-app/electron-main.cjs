@@ -10,6 +10,9 @@ app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('disable-gpu-compositing');
 app.commandLine.appendSwitch('disable-gpu-rasterization');
 app.commandLine.appendSwitch('limit-fps', '30'); // Limit overlay logic/render to 30fps to save resources for the game
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('wm-window-animations-disabled');
+}
 
 function loadSettings() {
   const settingsPath = path.join(__dirname, '..', 'broadcast_settings.json');
@@ -82,7 +85,7 @@ function createWindow() {
     transparent: true,
     frame: false,
     alwaysOnTop: true,
-    skipTaskbar: false,
+    skipTaskbar: true, // Improved for Linux to hide from dock/switcher
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -93,8 +96,13 @@ function createWindow() {
       spellcheck: false,
     },
     // Fix for Linux: type 'toolbar' or 'utility' helps with always-on-top positioning issues
-    ...(process.platform === 'linux' ? { type: 'toolbar' } : {}),
+    ...(process.platform === 'linux' ? { type: 'toolbar', focusable: true } : {}),
   });
+
+  if (process.platform === 'linux') {
+    win.setAlwaysOnTop(true, 'screen-saver', 1);
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
 
   // Load the Production Build or fall back to Dev Server
   const distPath = path.join(__dirname, 'dist', 'index.html');
