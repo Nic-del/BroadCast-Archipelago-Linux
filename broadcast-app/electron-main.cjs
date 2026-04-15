@@ -96,12 +96,21 @@ function createWindow() {
       spellcheck: false,
     },
     // Fix for Linux: type 'toolbar' or 'utility' helps with always-on-top positioning issues
-    ...(process.platform === 'linux' ? { type: 'toolbar', focusable: true } : {}),
+    // Fix for Linux: type 'utility' is often more stable than 'toolbar' for overlays
+    ...(process.platform === 'linux' ? { type: 'utility', focusable: true } : {}),
   });
 
   if (process.platform === 'linux') {
     win.setAlwaysOnTop(true, 'screen-saver', 1);
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    win.setFullScreenable(false);
+    
+    // Periodic re-assertion (once a second) to fight aggressive window managers
+    setInterval(() => {
+      if (!win.isDestroyed()) {
+        win.setAlwaysOnTop(true, 'screen-saver', 1);
+      }
+    }, 1000);
   }
 
   // Load the Production Build or fall back to Dev Server
@@ -119,6 +128,9 @@ function createWindow() {
   // LINUX FIX: Prevent window from snapping to (0,0) on focus loss (common on GNOME/Ubuntu)
   if (process.platform === 'linux') {
     win.on('blur', () => {
+      // Re-assert always on top on blur
+      win.setAlwaysOnTop(true, 'screen-saver', 1);
+
       // Small timeout to ensure the WM has finished its move attempt
       setTimeout(() => {
         const currentBounds = win.getBounds();
@@ -134,6 +146,7 @@ function createWindow() {
     
     // Also re-apply on focus just in case
     win.on('focus', () => {
+      win.setAlwaysOnTop(true, 'screen-saver', 1);
       const s = loadSettings();
       if (s && s.win_x !== undefined) {
         win.setPosition(s.win_x, s.win_y);
